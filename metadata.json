@@ -1,0 +1,6 @@
+{
+  "name": "FinanFlow - Finanzas iPhone",
+  "description": "Control de gastos diarios en menos de 5 segundos, fijos y tarjetas sin fricción optimizado para iOS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

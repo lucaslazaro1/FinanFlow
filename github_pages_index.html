@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>FinanFlow - Finanzas Personales & Ahorro</title>
+  <meta name="description" content="Gestión financiera personal ultrarrápida: presupuesto diario, control de gastos fijos, tarjetas en cuotas, fondo de ahorro e inversiones." />
+  <meta name="theme-color" content="#050811" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eefcf6',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+              950: '#022c22',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18, ReactDOM & Babel for Single-File Execution -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons via CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Estilos iOS / PWA / Base */
+    html, body {
+      background-color: #050811;
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 20px);
+    }
+    .pt-safe {
+      padding-top: env(safe-area-inset-top, 20px);
+    }
+    .ios-active:active {
+      transform: scale(0.97);
+      transition: transform 0.1s ease;
+    }
+    input, select, textarea {
+      user-select: text;
+    }
+    ::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.2s ease-out forwards;
+    }
+  </style>
+</head>
+<body class="bg-[#050811] text-slate-100 flex justify-center selection:bg-emerald-500 selection:text-black">
+  
+  <div id="root" class="w-full max-w-md min-h-screen flex flex-col relative bg-[#050811] border-x border-white/5 shadow-2xl"></div>
+
+  <!-- React Application Logic -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- ICONOS COMPATIBLES (SVG Directos para máxima fidelidad y velocidad) ---
+    const IconPlus = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 5v14M5 12h14"/></svg>
+    );
+    const IconCalendar = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+    );
+    const IconCheckCircle = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>
+    );
+    const IconPiggy = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h1a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-1c-.5-.8-1-1.5-1-1z"/><path d="M16 9h.01"/></svg>
+    );
+    const IconChart = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+    );
+    const IconTrash = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+    );
+    const IconRotateCcw = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+    );
+    const IconSettings = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+    );
+    const IconClock = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    );
+    const IconArrowDownRight = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>
+    );
+    const IconArrowUpRight = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
+    );
+    const IconCreditCard = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+    );
+    const IconX = ({ size = 18, className = "" }) => (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    );
+
+    // --- UTILIDADES ---
+    const STORAGE_KEY = 'finanflow_v2_data';
+    const triggerHaptic = (type = 'light') => {
+      if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+        try {
+          if (type === 'light') window.navigator.vibrate(10);
+          else if (type === 'medium') window.navigator.vibrate(25);
+          else if (type === 'heavy') window.navigator.vibrate([30, 40, 30]);
+        } catch (e) {}
+      }
+    };
+
+    const formatMoney = (val, sym = '$') => {
+      const num = Number(val) || 0;
+      return `${sym} ${num.toLocaleString('es-AR')}`;
+    };
+
+    const formatCurrency = (val, curr = 'ARS') => {
+      const num = Number(val) || 0;
+      if (curr === 'USD') {
+        return `US$ ${num.toLocaleString('en-US')}`;
+      }
+      return `$ ${num.toLocaleString('es-AR')}`;
+    };
+
+    // --- DATOS INICIALES POR DEFECTO ---
+    const DEFAULT_DATA = {
+      salary: 1200000,
+      currencySymbol: '$',
+      disponibleUSD: 150,
+      usdInitialBalance: 150,
+      incomes: [
+        { id: 'inc-1', description: 'Sueldo Mensual Principal', amount: 1200000, date: new Date().toISOString().split('T')[0], type: 'salary' }
+      ],
+      fixedExpenses: [
+        { id: 'f-1', name: 'Alquiler & Expensas', amount: 350000, isPaid: true, category: 'Vivienda', dueDay: 10 },
+        { id: 'f-2', name: 'Internet & Celular', amount: 42000, isPaid: false, category: 'Servicios', dueDay: 15 },
+        { id: 'f-3', name: 'Gimnasio', amount: 28000, isPaid: true, category: 'Salud', dueDay: 5 },
+        { id: 'f-4', name: 'Streaming (Netflix + Spotify)', amount: 18500, isPaid: false, category: 'Ocio', dueDay: 20 }
+      ],
+      creditCards: [
+        { id: 'cc-1', name: 'Visa Santander', bank: 'Santander', closingDate: '2026-09-28', dueDate: '2026-10-06', color: '#dc2626' },
+        { id: 'cc-2', name: 'Mastercard BBVA', bank: 'BBVA', closingDate: '2026-09-24', dueDate: '2026-10-04', color: '#2563eb' }
+      ],
+      installmentPurchases: [
+        { id: 'inst-1', description: 'Zapatillas Running', totalAmount: 180000, currentInstallment: 2, totalInstallments: 6, installmentAmount: 30000, creditCardId: 'cc-1' },
+        { id: 'inst-2', description: 'Smart TV 50" 4K', totalAmount: 720000, currentInstallment: 5, totalInstallments: 12, installmentAmount: 60000, creditCardId: 'cc-2' }
+      ],
+      expenses: [
+        { id: 'e-1', description: 'Supermercado Coto', amount: 48500, date: new Date().toISOString().split('T')[0], time: '12:30', category: 'Supermercado', paymentMethod: 'cash' },
+        { id: 'e-2', description: 'Combustible YPF', amount: 25000, date: new Date().toISOString().split('T')[0], time: '09:15', category: 'Transporte', paymentMethod: 'cash' },
+        { id: 'e-3', description: 'Cafetería & Merienda', amount: 6200, date: new Date().toISOString().split('T')[0], time: '17:40', category: 'Salidas', paymentMethod: 'cash' }
+      ],
+      savingsInstruments: [
+        { id: 's-1', name: 'Plazo Fijo Banco Nación', type: 'plazo_fijo', currency: 'ARS', currentBalance: 500000, initialCapital: 500000, tna: 38, termDays: 30, startDate: '2026-09-01', dueDate: '2026-10-01', notes: 'Renovación mensual automática' },
+        { id: 's-2', name: 'Fondo de Emergencia 3 Meses', type: 'emergency', currency: 'ARS', currentBalance: 650000, targetAmount: 1000000, notes: 'En FCI money market de rescate inmediato' },
+        { id: 's-3', name: 'Colchón Dólares Físicos', type: 'cash_usd', currency: 'USD', currentBalance: 800, targetAmount: 2000, notes: 'Billete físico caja de seguridad' }
+      ]
+    };
+
+    // --- COMPONENTE PRINCIPAL APP ---
+    function App() {
+      const [activeTab, setActiveTab] = useState('today'); // 'today' | 'fixed' | 'savings' | 'analysis'
+      const [data, setData] = useState(() => {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? JSON.parse(saved) : DEFAULT_DATA;
+        } catch (e) {
+          return DEFAULT_DATA;
+        }
+      });
+
+      // Guardado automático permanente
+      useEffect(() => {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (e) {}
+      }, [data]);
+
+      // Modales
+      const [isQuickExpenseOpen, setIsQuickExpenseOpen] = useState(false);
+      const [isQuickIncomeOpen, setIsQuickIncomeOpen] = useState(false);
+      const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+      const [showExchangeModal, setShowExchangeModal] = useState(false);
+
+      // Cálculos Financieros
+      const calculations = useMemo(() => {
+        const totalIncome = (data.incomes || []).reduce((sum, inc) => sum + (Number(inc.amount) || 0), 0);
+        const totalFixed = (data.fixedExpenses || []).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const totalFixedPaid = (data.fixedExpenses || []).filter(f => f.isPaid).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+        const totalFixedPending = totalFixed - totalFixedPaid;
+
+        const totalCardInstallments = (data.installmentPurchases || []).reduce((sum, p) => sum + (Number(p.installmentAmount) || 0), 0);
+
+        const totalExpensesCash = (data.expenses || []).filter(e => e.paymentMethod !== 'credit').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+        const totalExpensesToday = (data.expenses || []).filter(e => e.date === new Date().toISOString().split('T')[0]).reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+        // Saldo Neto Disponible = Total Ingresos - Gastos Fijos Totales del mes - Cuotas de Tarjeta del mes - Gastos Variables ya pagados
+        const saldoNetoDisponible = totalIncome - totalFixed - totalCardInstallments - totalExpensesCash;
+
+        // Presupuesto diario restante
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const remainingDays = Math.max(1, daysInMonth - now.getDate() + 1);
+        const presupuestoDiario = Math.max(0, Math.round(saldoNetoDisponible / remainingDays));
+
+        const totalSavingsARS = (data.savingsInstruments || []).filter(s => (s.currency || 'ARS') === 'ARS').reduce((sum, s) => sum + (Number(s.currentBalance) || 0), 0);
+        const totalSavingsUSD = (data.savingsInstruments || []).filter(s => s.currency === 'USD').reduce((sum, s) => sum + (Number(s.currentBalance) || 0), 0);
+
+        return {
+          totalIncome,
+          totalFixed,
+          totalFixedPaid,
+          totalFixedPending,
+          totalCardInstallments,
+          totalExpensesCash,
+          totalExpensesToday,
+          saldoNetoDisponible,
+          presupuestoDiario,
+          remainingDays,
+          totalSavingsARS,
+          totalSavingsUSD
+        };
+      }, [data]);
+
+      // Handlers
+      const handleAddExpense = (newExp) => {
+        setData(prev => ({
+          ...prev,
+          expenses: [newExp, ...(prev.expenses || [])]
+        }));
+      };
+
+      const handleAddIncome = (newInc) => {
+        setData(prev => ({
+          ...prev,
+          incomes: [newInc, ...(prev.incomes || [])]
+        }));
+      };
+
+      const handleToggleFixed = (id) => {
+        triggerHaptic('light');
+        setData(prev => ({
+          ...prev,
+          fixedExpenses: prev.fixedExpenses.map(f => f.id === id ? { ...f, isPaid: !f.isPaid } : f)
+        }));
+      };
+
+      const handleCleanSlate = () => {
+        triggerHaptic('medium');
+        setData({
+          salary: 0,
+          currencySymbol: '$',
+          disponibleUSD: 0,
+          usdInitialBalance: 0,
+          incomes: [],
+          fixedExpenses: [],
+          creditCards: [],
+          installmentPurchases: [],
+          expenses: [],
+          savingsInstruments: []
+        });
+        alert('¡Datos reiniciados! La app está lista en Modo Producción para tus finanzas reales.');
+      };
+
+      return (
+        <div className="w-full flex-1 flex flex-col pb-24">
+          
+          {/* HEADER SUPERIOR */}
+          <header className="sticky top-0 z-40 bg-[#050811]/90 backdrop-blur-md border-b border-white/5 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-slate-950 font-black text-base shadow-md shadow-emerald-500/20">
+                F
+              </div>
+              <div>
+                <h1 className="text-sm font-black tracking-tight text-white flex items-center gap-1.5 leading-none">
+                  FinanFlow
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold">PRO</span>
+                </h1>
+                <p className="text-[10px] text-slate-400 font-medium">Control Total & Ahorro</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => { triggerHaptic('light'); setIsQuickIncomeOpen(true); }}
+                className="ios-active px-2.5 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1">
+                <IconPlus size={14} />
+                <span>Ingreso</span>
+              </button>
+              <button 
+                onClick={() => { triggerHaptic('light'); setIsSettingsOpen(true); }}
+                className="p-2 rounded-xl text-slate-400 hover:text-white bg-white/5 border border-white/5">
+                <IconSettings size={16} />
+              </button>
+            </div>
+          </header>
+
+          {/* CUERPO PRINCIPAL SEGÚN PESTAÑA */}
+          <main className="flex-1 p-4 space-y-4">
+            
+            {/* PESTAÑA 1: HOY / GENERAL */}
+            {activeTab === 'today' && (
+              <div className="space-y-4 animate-fade-in">
+                
+                {/* TARJETA PRINCIPAL: SALDO DISPONIBLE & DÍA */}
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-[#0c1424] via-[#09101d] to-[#050811] border border-emerald-500/30 shadow-xl relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                      Saldo Neto Disponible
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-extrabold">
+                      Mes en Curso
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight tabular-nums">
+                      {formatMoney(calculations.saldoNetoDisponible, data.currencySymbol)}
+                    </h2>
+                  </div>
+
+                  <p className="text-xs text-slate-400 mt-1">
+                    Libre de gastos fijos y cuotas de tarjetas.
+                  </p>
+
+                  {/* Presupuesto Diario */}
+                  <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-2 gap-3">
+                    <div className="bg-slate-950/60 p-3 rounded-2xl border border-white/5">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Sugerido por Día</span>
+                      <p className="text-lg font-extrabold text-emerald-400 mt-0.5">
+                        {formatMoney(calculations.presupuestoDiario, data.currencySymbol)}
+                      </p>
+                      <span className="text-[9px] text-slate-400">Quedan {calculations.remainingDays} días</span>
+                    </div>
+
+                    <div className="bg-slate-950/60 p-3 rounded-2xl border border-white/5">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Gastado Hoy</span>
+                      <p className="text-lg font-extrabold text-white mt-0.5">
+                        {formatMoney(calculations.totalExpensesToday, data.currencySymbol)}
+                      </p>
+                      <span className="text-[9px] text-slate-400">Variables en efectivo</span>
+                    </div>
+                  </div>
+
+                  {/* TARJETA DISPONIBLE EN USD */}
+                  <div className="mt-3.5 w-full bg-[#131b26] border border-amber-500/25 rounded-2xl p-3 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0">
+                        <span className="text-amber-400 font-bold text-xs">US$</span>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-semibold text-amber-500/90 uppercase tracking-wider leading-none whitespace-nowrap">DISPONIBLE EN USD</span>
+                        <span id="saldo-usd-display" className="text-lg font-black text-white mt-1 leading-none">{formatCurrency(data.disponibleUSD || 0, 'USD')}</span>
+                      </div>
+                    </div>
+
+                    <button 
+                      onClick={() => setShowExchangeModal(true)}
+                      type="button" 
+                      className="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-500 hover:bg-amber-400 active:scale-95 text-slate-950 flex items-center gap-1.5 shadow-sm transition whitespace-nowrap">
+                      <span className="text-sm font-black">⇄</span>
+                      <span>Cambiar</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* BOTÓN ULTRA RÁPIDO */}
+                <button
+                  onClick={() => { triggerHaptic('medium'); setIsQuickExpenseOpen(true); }}
+                  className="ios-active w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 text-slate-950 font-extrabold text-sm sm:text-base tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                >
+                  <div className="w-6 h-6 rounded-full bg-slate-950 text-emerald-400 flex items-center justify-center">
+                    <IconPlus size={16} />
+                  </div>
+                  <span>Anotar Gastos en 3 Segundos</span>
+                </button>
+
+                {/* LISTA DE MOVIMIENTOS RECIENTES */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Gastos Recientes ({data.expenses.length})
+                    </h3>
+                  </div>
+
+                  {data.expenses.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-900/40 rounded-2xl border border-white/5 text-slate-400 text-xs">
+                      No hay gastos cargados aún. Usa el botón verde para registrar el primero.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {data.expenses.slice(0, 5).map(exp => (
+                        <div key={exp.id} className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-bold text-white leading-tight">{exp.description}</p>
+                            <span className="text-[10px] text-slate-400">{exp.category} • {exp.date}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-extrabold text-rose-400 tabular-nums block">
+                              -{formatMoney(exp.amount, data.currencySymbol)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* PESTAÑA 2: GASTOS FIJOS & TARJETAS */}
+            {activeTab === 'fixed' && (
+              <div className="space-y-4 animate-fade-in">
+                
+                {/* RESUMEN DE FIJOS */}
+                <div className="p-4 rounded-3xl bg-slate-900 border border-indigo-500/30 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-indigo-400 uppercase">Pendiente de Pago</span>
+                    <p className="text-2xl font-black text-white">{formatMoney(calculations.totalFixedPending, data.currencySymbol)}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 block">Total en Fijos</span>
+                    <span className="text-sm font-bold text-slate-200">{formatMoney(calculations.totalFixed, data.currencySymbol)}</span>
+                  </div>
+                </div>
+
+                {/* LISTA DE SERVICIOS FIJOS */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Servicios & Gastos Fijos
+                    </h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    {data.fixedExpenses.map(f => (
+                      <div key={f.id} className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => handleToggleFixed(f.id)}
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center border transition ${
+                              f.isPaid ? 'bg-emerald-500 border-emerald-500 text-black font-bold' : 'border-slate-600 bg-slate-950'
+                            }`}>
+                            {f.isPaid ? '✓' : ''}
+                          </button>
+                          <div>
+                            <p className={`text-sm font-bold ${f.isPaid ? 'line-through text-slate-500' : 'text-white'}`}>
+                              {f.name}
+                            </p>
+                            <span className="text-[10px] text-slate-400">{f.category} • Vence día {f.dueDay}</span>
+                          </div>
+                        </div>
+                        <span className="text-sm font-extrabold text-white">
+                          {formatMoney(f.amount, data.currencySymbol)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* CUOTAS DE TARJETAS */}
+                <div className="space-y-2 pt-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1">
+                    Compras en Cuotas Este Mes
+                  </h3>
+                  <div className="space-y-2">
+                    {data.installmentPurchases.map(inst => (
+                      <div key={inst.id} className="p-3.5 rounded-2xl bg-slate-900/80 border border-white/5 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-white">{inst.description}</p>
+                          <span className="text-[10px] text-indigo-400 font-semibold">
+                            Cuota {inst.currentInstallment} de {inst.totalInstallments}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-sm font-extrabold text-amber-400">
+                            {formatMoney(inst.installmentAmount, data.currencySymbol)}/mes
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* PESTAÑA 3: AHORRO & INVERSIONES */}
+            {activeTab === 'savings' && (
+              <div className="space-y-4 animate-fade-in">
+                
+                {/* DUAL ARS / USD */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-4 rounded-3xl bg-emerald-950/40 border border-emerald-500/30">
+                    <span className="text-[10px] uppercase font-bold text-emerald-300">Total en Pesos</span>
+                    <p className="text-xl font-black text-white mt-1">{formatMoney(calculations.totalSavingsARS, data.currencySymbol)}</p>
+                  </div>
+                  <div className="p-4 rounded-3xl bg-amber-950/40 border border-amber-500/30">
+                    <span className="text-[10px] uppercase font-bold text-amber-300">Total en Dólares</span>
+                    <p className="text-xl font-black text-amber-300 mt-1">{formatCurrency(calculations.totalSavingsUSD, 'USD')}</p>
+                  </div>
+                </div>
+
+                {/* BOTONERA DE FONDOS */}
+                <div className="grid grid-cols-2 gap-2.5 w-full my-3">
+                  <button
+                    type="button"
+                    onClick={() => alert('Crear Plazo Fijo disponible en panel modal.')}
+                    className="ios-active w-full py-2.5 px-2 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/40 border border-cyan-500/40 text-cyan-300 flex items-center justify-center gap-1.5 text-center transition active:scale-95 shadow-sm"
+                  >
+                    <IconClock size={14} className="shrink-0" />
+                    <span className="text-xs font-semibold whitespace-nowrap truncate">Nuevo Plazo Fijo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => alert('Crear Fondo de Ahorro disponible en panel modal.')}
+                    className="ios-active w-full py-2.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center gap-1.5 text-center transition active:scale-95 shadow-sm"
+                  >
+                    <IconPlus size={14} className="shrink-0" />
+                    <span className="text-xs font-semibold whitespace-nowrap truncate">Nuevo Fondo</span>
+                  </button>
+                </div>
+
+                {/* LISTA DE INSTRUMENTOS */}
+                <div className="space-y-3">
+                  {data.savingsInstruments.map(s => (
+                    <div key={s.id} className="p-4 rounded-3xl bg-slate-900/90 border border-white/10 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-white/10 text-slate-300 font-bold uppercase">
+                            {s.type === 'plazo_fijo' ? 'Plazo Fijo' : 'Ahorro / Cartera'}
+                          </span>
+                          <h4 className="text-sm font-bold text-white mt-1">{s.name}</h4>
+                        </div>
+                        <span className="text-lg font-black text-emerald-400">
+                          {formatCurrency(s.currentBalance, s.currency)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">{s.notes}</p>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+
+            {/* PESTAÑA 4: ANÁLISIS */}
+            {activeTab === 'analysis' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="p-5 rounded-3xl bg-slate-900 border border-white/10 space-y-3">
+                  <h3 className="text-sm font-bold text-white">Salud Financiera del Mes</h3>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between py-1.5 border-b border-white/5">
+                      <span className="text-slate-400">Total de Ingresos:</span>
+                      <span className="font-bold text-emerald-400">{formatMoney(calculations.totalIncome, data.currencySymbol)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-white/5">
+                      <span className="text-slate-400">Gastos Fijos Comprometidos:</span>
+                      <span className="font-bold text-rose-400">-{formatMoney(calculations.totalFixed, data.currencySymbol)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-white/5">
+                      <span className="text-slate-400">Compromisos de Tarjeta:</span>
+                      <span className="font-bold text-amber-400">-{formatMoney(calculations.totalCardInstallments, data.currencySymbol)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 border-b border-white/5">
+                      <span className="text-slate-400">Gastos Variables Registrados:</span>
+                      <span className="font-bold text-rose-300">-{formatMoney(calculations.totalExpensesCash, data.currencySymbol)}</span>
+                    </div>
+                    <div className="flex justify-between pt-2">
+                      <span className="text-white font-bold">Disponible Restante Real:</span>
+                      <span className="font-black text-emerald-300 text-sm">{formatMoney(calculations.saldoNetoDisponible, data.currencySymbol)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </main>
+
+          {/* BOTÓN FLOTANTE FAB (POSICIÓN EXACTA) */}
+          <button 
+            id="fab-agregar" 
+            onClick={() => { triggerHaptic('medium'); setIsQuickExpenseOpen(true); }}
+            className="fixed z-50 rounded-full bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 flex items-center justify-center shadow-lg shadow-emerald-500/30 transition-transform"
+            style={{ position: 'fixed', bottom: '95px', right: '20px', width: '48px', height: '48px' }}>
+            <IconPlus size={24} />
+          </button>
+
+          {/* BARRA DE NAVEGACIÓN INFERIOR iOS */}
+          <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#090d16]/95 backdrop-blur-xl border-t border-white/10 px-3 py-2 pb-safe flex items-center justify-around z-40">
+            <button 
+              onClick={() => { triggerHaptic('light'); setActiveTab('today'); }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === 'today' ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+              <IconCalendar size={18} />
+              <span className="text-[10px]">Hoy</span>
+            </button>
+            <button 
+              onClick={() => { triggerHaptic('light'); setActiveTab('fixed'); }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === 'fixed' ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+              <IconCheckCircle size={18} />
+              <span className="text-[10px]">Fijos & Cuotas</span>
+            </button>
+            <button 
+              onClick={() => { triggerHaptic('light'); setActiveTab('savings'); }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === 'savings' ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+              <IconPiggy size={18} />
+              <span className="text-[10px]">Ahorros</span>
+            </button>
+            <button 
+              onClick={() => { triggerHaptic('light'); setActiveTab('analysis'); }}
+              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${activeTab === 'analysis' ? 'text-emerald-400 font-bold' : 'text-slate-400'}`}>
+              <IconChart size={18} />
+              <span className="text-[10px]">Análisis</span>
+            </button>
+          </nav>
+
+          {/* MODAL GASTO RÁPIDO */}
+          {isQuickExpenseOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+              <div className="w-full max-w-md bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl p-5 pb-safe space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white">Anotar Gasto Rápido</h3>
+                  <button onClick={() => setIsQuickExpenseOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                    <IconX size={18} />
+                  </button>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const desc = e.target.description.value.trim();
+                  const amount = Number(e.target.amount.value);
+                  const cat = e.target.category.value;
+                  if (!desc || isNaN(amount) || amount <= 0) return;
+                  handleAddExpense({
+                    id: 'exp-' + Date.now(),
+                    description: desc,
+                    amount: amount,
+                    category: cat,
+                    date: new Date().toISOString().split('T')[0],
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    paymentMethod: 'cash'
+                  });
+                  setIsQuickExpenseOpen(false);
+                }} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Monto del Gasto</label>
+                    <input name="amount" type="number" step="any" required placeholder="0.00" autoFocus className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-xl font-bold text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Concepto / Comercio</label>
+                    <input name="description" type="text" required placeholder="Ej: Supermercado, Farmacia, Café..." className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Categoría</label>
+                    <select name="category" className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500">
+                      <option value="Supermercado">Supermercado & Comida</option>
+                      <option value="Transporte">Transporte / Combustible</option>
+                      <option value="Salidas">Salidas & Ocio</option>
+                      <option value="Salud">Salud & Farmacia</option>
+                      <option value="Varios">Varios / Otros</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm hover:bg-emerald-400 transition">
+                    Guardar Gasto
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL INGRESO RÁPIDO */}
+          {isQuickIncomeOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+              <div className="w-full max-w-md bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl p-5 pb-safe space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white">Registrar Ingreso</h3>
+                  <button onClick={() => setIsQuickIncomeOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                    <IconX size={18} />
+                  </button>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const desc = e.target.description.value.trim();
+                  const amount = Number(e.target.amount.value);
+                  if (!desc || isNaN(amount) || amount <= 0) return;
+                  handleAddIncome({
+                    id: 'inc-' + Date.now(),
+                    description: desc,
+                    amount: amount,
+                    date: new Date().toISOString().split('T')[0],
+                    type: 'extra'
+                  });
+                  setIsQuickIncomeOpen(false);
+                }} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Monto del Ingreso</label>
+                    <input name="amount" type="number" step="any" required placeholder="0.00" autoFocus className="w-full px-4 py-3 bg-slate-950 border border-white/10 rounded-xl text-xl font-bold text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Origen / Concepto</label>
+                    <input name="description" type="text" required placeholder="Ej: Sueldo, Venta, Freelance..." className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500" />
+                  </div>
+                  <button type="submit" className="w-full py-3 rounded-xl bg-emerald-500 text-slate-950 font-bold text-sm hover:bg-emerald-400 transition">
+                    Añadir a mi Disponible
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL CAMBIO DE USD A PESOS */}
+          {showExchangeModal && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+              <div className="w-full max-w-md bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl p-5 pb-safe space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white">Cambiar Dólares a Pesos</h3>
+                  <button onClick={() => setShowExchangeModal(false)} className="p-1 text-slate-400 hover:text-white">
+                    <IconX size={18} />
+                  </button>
+                </div>
+                
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  const usd = Number(e.target.usdAmount.value);
+                  const rate = Number(e.target.exchangeRate.value);
+                  if (isNaN(usd) || usd <= 0 || usd > (data.disponibleUSD || 0)) {
+                    alert('Monto en USD inválido o superior al disponible.');
+                    return;
+                  }
+                  const arsTotal = usd * rate;
+                  setData(prev => ({
+                    ...prev,
+                    disponibleUSD: Math.max(0, (prev.disponibleUSD || 0) - usd),
+                    incomes: [
+                      {
+                        id: 'inc-' + Date.now(),
+                        description: `Cambio de US$ ${usd} @ $${rate}`,
+                        amount: arsTotal,
+                        date: new Date().toISOString().split('T')[0],
+                        type: 'extra'
+                      },
+                      ...(prev.incomes || [])
+                    ]
+                  }));
+                  setShowExchangeModal(false);
+                }} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Dólares a Cambiar (Disponible: US$ {data.disponibleUSD || 0})</label>
+                    <input name="usdAmount" type="number" step="any" max={data.disponibleUSD || 0} required placeholder="US$ 0" className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-base font-bold text-white focus:outline-none focus:border-amber-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 block mb-1">Tipo de Cambio / Cotización en ARS</label>
+                    <input name="exchangeRate" type="number" step="any" defaultValue={1300} required placeholder="Ej: 1300" className="w-full px-4 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-base font-bold text-white focus:outline-none focus:border-amber-500" />
+                  </div>
+                  <button type="submit" className="w-full py-3 rounded-xl bg-amber-500 text-slate-950 font-bold text-sm hover:bg-amber-400 transition">
+                    Convertir y Acreditar en Pesos
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL CONFIGURACIÓN Y MODO LIMPIO */}
+          {isSettingsOpen && (
+            <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+              <div className="w-full max-w-md bg-slate-900 border-t sm:border border-white/10 rounded-t-[28px] sm:rounded-3xl p-5 pb-safe space-y-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white">Ajustes del Sistema</h3>
+                  <button onClick={() => setIsSettingsOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                    <IconX size={18} />
+                  </button>
+                </div>
+
+                {/* Símbolo de Moneda */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 block mb-2">Moneda Principal</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {['$', 'ARS $', 'US$', '€'].map(sym => (
+                      <button 
+                        key={sym} 
+                        onClick={() => setData(prev => ({ ...prev, currencySymbol: sym }))}
+                        className={`py-2 rounded-xl text-xs font-bold border transition ${data.currencySymbol === sym ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300' : 'bg-slate-950 border-white/5 text-slate-400'}`}>
+                        {sym}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* BOTÓN MODO PRODUCCIÓN */}
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-rose-500/30 space-y-2">
+                  <span className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                    <IconTrash size={15} />
+                    <span>Modo Producción / Iniciar en Limpio</span>
+                  </span>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Borra los datos de muestra y deja todos los saldos en $0 para tus finanzas reales.
+                  </p>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('¿Estás seguro de borrar todos los datos demo e iniciar de cero?')) {
+                        handleCleanSlate();
+                        setIsSettingsOpen(false);
+                      }
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl border border-red-500/40 bg-red-950/20 hover:bg-red-900/30 text-rose-300 font-semibold text-[11px] sm:text-xs flex items-center justify-center gap-2 text-center transition active:scale-95"
+                  >
+                    <IconRotateCcw size={14} className="shrink-0" />
+                    <span className="whitespace-nowrap">Borrar datos de demo e iniciar de cero</span>
+                  </button>
+                </div>
+
+                {/* COPIA DE SEGURIDAD JSON */}
+                <div className="pt-2 border-t border-white/5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `finanflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+                      a.click();
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-xs font-semibold text-slate-200 text-center">
+                    Exportar Backup JSON
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.json';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const parsed = JSON.parse(event.target.result);
+                            setData(parsed);
+                            alert('¡Backup restaurado con éxito!');
+                            setIsSettingsOpen(false);
+                          } catch (err) {
+                            alert('Archivo JSON inválido.');
+                          }
+                        };
+                        reader.readAsText(file);
+                      };
+                      input.click();
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-xs font-semibold text-indigo-300 text-center">
+                    Restaurar Backup
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // Renderizar aplicación
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
